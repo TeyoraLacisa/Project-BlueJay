@@ -17,16 +17,14 @@ public class PlayerController : MonoBehaviour
     public float crouchHeight = 1f;
     public float crouchTransitionSpeed = 8f;
     
-    // Sliding variables
     public float slideSpeed = 15f;
     public float slideDuration = 1f;
     public float slideCooldown = 1.5f;
     public float slideHeight = 0.5f;
     
-    // Camera height adjustments
-    public float standingCameraHeight = 1.6f; // Camera height when standing
-    public float crouchingCameraHeight = 0.8f; // Camera height when crouching
-    public float slidingCameraHeight = 0.5f; // Camera height when sliding
+    public float standingCameraHeight = 1.6f;
+    public float crouchingCameraHeight = 0.8f;
+    public float slidingCameraHeight = 0.5f;
     
     private CharacterController controller;
     private CapsuleCollider capsuleCollider;
@@ -44,12 +42,10 @@ public class PlayerController : MonoBehaviour
     private float targetHeight;
     private Vector3 standingCenter;
 
-    // Sliding timers
     private float slideTimer = 0f;
     private float slideCooldownTimer = 0f;
     private Vector3 slideDirection;
 
-    // Reference to child objects that need adjustment
     public Transform cameraTransform;
     public Transform groundCheck;
 
@@ -60,26 +56,22 @@ public class PlayerController : MonoBehaviour
         currentSpeed = speed;
         currentVelocity = Vector3.zero;
         
-        // Store original dimensions
         standingHeight = controller.height;
         standingCenter = controller.center;
         
         currentHeight = standingHeight;
         targetHeight = standingHeight;
 
-        // If no camera assigned, try to find it
         if (cameraTransform == null)
         {
             cameraTransform = GetComponentInChildren<Camera>()?.transform;
         }
         
-        // Set initial camera height
         UpdateCameraHeight();
     }
 
     void Update()
     {
-        // Update cooldown timers
         if (jumpCooldownTimer > 0f)
         {
             jumpCooldownTimer -= Time.deltaTime;
@@ -95,7 +87,6 @@ public class PlayerController : MonoBehaviour
         HandleCrouch();
         HandleMovement();
         
-        // Auto stand up check
         if (isCrouching && !isSliding && !wantsToCrouch && CanStandUp())
         {
             AutoStandUp();
@@ -104,18 +95,15 @@ public class PlayerController : MonoBehaviour
 
     void HandleCrouchInput()
     {
-        // Check for crouch button (LEFT CTRL only) and ensure cooldown has expired
         if ((Input.GetKeyDown(KeyCode.LeftControl)) && crouchCooldownTimer <= 0f)
         {
             wantsToCrouch = true;
             
-            // If sprinting and allowed, start slide (which includes crouching)
             if (isSprinting && IsSlidingAllowed())
             {
                 StartSlide();
                 crouchCooldownTimer = crouchCooldown;
             }
-            // Otherwise just start normal crouch
             else if (!isCrouching)
             {
                 isCrouching = true;
@@ -128,7 +116,6 @@ public class PlayerController : MonoBehaviour
         {
             wantsToCrouch = false;
             
-            // Auto stand up if possible when releasing crouch
             if (isCrouching && !isSliding && CanStandUp())
             {
                 AutoStandUp();
@@ -148,23 +135,19 @@ public class PlayerController : MonoBehaviour
 
     void HandleSliding()
     {
-        // Update slide cooldown
         if (slideCooldownTimer > 0f)
         {
             slideCooldownTimer -= Time.deltaTime;
         }
 
-        // Handle active slide
         if (isSliding)
         {
             slideTimer -= Time.deltaTime;
 
-            // Apply slide movement
             currentVelocity = slideDirection * slideSpeed;
             moveDirection.x = currentVelocity.x;
             moveDirection.z = currentVelocity.z;
 
-            // End slide when timer expires or player jumps (check cooldown for transition)
             if ((slideTimer <= 0f || Input.GetButton("Jump")) && crouchCooldownTimer <= 0f)
             {
                 EndSlide();
@@ -172,14 +155,12 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                // Allow some steering during slide
                 Vector2 input = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
                 if (input.magnitude > 0.1f)
                 {
                     Vector3 desiredMoveDirection = new Vector3(input.x, 0, input.y);
                     desiredMoveDirection = transform.TransformDirection(desiredMoveDirection);
                     
-                    // Add some steering influence
                     Vector3 steerDirection = Vector3.Lerp(slideDirection, desiredMoveDirection, 0.3f * Time.deltaTime);
                     slideDirection = steerDirection.normalized;
                 }
@@ -204,7 +185,6 @@ public class PlayerController : MonoBehaviour
         slideTimer = slideDuration;
         slideCooldownTimer = slideCooldown;
         
-        // Store slide direction based on current movement
         slideDirection = new Vector3(currentVelocity.x, 0, currentVelocity.z).normalized;
         if (slideDirection.magnitude < 0.1f)
         {
@@ -218,23 +198,19 @@ public class PlayerController : MonoBehaviour
     {
         isSliding = false;
         
-        // After slide ends, check if we should stay crouched or stand up
         if (wantsToCrouch)
         {
-            // Player is still holding crouch button, transition to normal crouch
             targetHeight = crouchHeight;
             isCrouching = true;
         }
         else
         {
-            // Player released crouch button, try to stand up automatically
             if (CanStandUp())
             {
                 AutoStandUp();
             }
             else
             {
-                // Can't stand up, stay crouched
                 targetHeight = crouchHeight;
                 isCrouching = true;
             }
@@ -243,7 +219,6 @@ public class PlayerController : MonoBehaviour
 
     void HandleCrouch()
     {
-        // Update height based on current state (crouch or slide)
         if (isSliding)
         {
             targetHeight = slideHeight;
@@ -263,29 +238,24 @@ public class PlayerController : MonoBehaviour
 
     void UpdateHeight()
     {
-        // Smoothly transition height
         float previousHeight = currentHeight;
         currentHeight = Mathf.Lerp(currentHeight, targetHeight, crouchTransitionSpeed * Time.deltaTime);
 
-        // Update Character Controller
         controller.height = currentHeight;
         controller.center = new Vector3(0, currentHeight / 2f, 0);
 
-        // Update Capsule Collider
         if (capsuleCollider != null)
         {
             capsuleCollider.height = currentHeight;
             capsuleCollider.center = new Vector3(0, currentHeight / 2f, 0);
         }
 
-        // Adjust position to prevent sinking into ground when getting shorter
         if (currentHeight < previousHeight)
         {
             float heightDifference = previousHeight - currentHeight;
             transform.position += new Vector3(0, heightDifference / 2f, 0);
         }
 
-        // Adjust ground check position
         if (groundCheck != null)
         {
             groundCheck.localPosition = new Vector3(0, 0.1f, 0);
@@ -311,7 +281,6 @@ public class PlayerController : MonoBehaviour
                 targetCameraHeight = standingCameraHeight;
             }
             
-            // Smoothly transition camera height
             Vector3 currentCameraPos = cameraTransform.localPosition;
             Vector3 targetCameraPos = new Vector3(0, targetCameraHeight, 0);
             cameraTransform.localPosition = Vector3.Lerp(currentCameraPos, targetCameraPos, crouchTransitionSpeed * Time.deltaTime);
@@ -322,22 +291,18 @@ public class PlayerController : MonoBehaviour
     {
         if (!isCrouching || isSliding) return false;
         
-        float checkDistance = standingHeight - currentHeight + 0.2f; // Extra margin
+        float checkDistance = standingHeight - currentHeight + 0.2f; 
         Vector3 rayStart = transform.position + Vector3.up * (currentHeight + 0.1f);
         
-        // Debug visualization
         Debug.DrawRay(rayStart, Vector3.up * checkDistance, Color.red);
         
-        // Check with multiple rays for better coverage
         float checkRadius = capsuleCollider != null ? capsuleCollider.radius * 0.8f : 0.3f;
         
-        // Center ray
         if (Physics.Raycast(rayStart, Vector3.up, out RaycastHit hit, checkDistance))
         {
             return false;
         }
         
-        // Additional rays in a circle pattern for better coverage
         Vector3[] directions = new Vector3[]
         {
             Vector3.forward,
@@ -359,7 +324,6 @@ public class PlayerController : MonoBehaviour
             }
         }
         
-        // Final capsule cast for comprehensive check
         if (capsuleCollider != null)
         {
             Vector3 point1 = transform.position + Vector3.up * capsuleCollider.radius;
@@ -377,7 +341,6 @@ public class PlayerController : MonoBehaviour
 
     void HandleMovement()
     {
-        // Don't process normal movement input during slide
         if (isSliding)
         {
             moveDirection.y -= gravity * Time.deltaTime;
@@ -395,14 +358,12 @@ public class PlayerController : MonoBehaviour
         Vector3 desiredMoveDirection = new Vector3(input.x, 0, input.y);
         desiredMoveDirection = transform.TransformDirection(desiredMoveDirection);
         
-        // Handle sprinting (can't sprint while crouching)
         isSprinting = (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && 
                      !isCrouching && 
                      !isSliding && 
                      controller.isGrounded &&
                      input.magnitude > 0.1f;
         
-        // Determine target speed based on movement state
         float targetMovementSpeed;
         if (isCrouching)
         {
