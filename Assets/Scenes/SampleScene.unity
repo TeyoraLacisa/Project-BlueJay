@@ -6736,7 +6736,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sensitivity: 1
-  tiltAmount: 10
+  tiltAmount: 3
   tiltSmoothness: 5
   zoomFOV: 60
   zoomSpeed: 10
