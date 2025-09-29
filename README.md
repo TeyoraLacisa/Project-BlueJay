@@ -1,1 +1,1 @@
-Билд под винду находится в директории: Builds/Windows/Project-BlueJay.exe
+Билд под винду находится в директории: Builds/PBJ-Win/Project-BlueJay.exe
