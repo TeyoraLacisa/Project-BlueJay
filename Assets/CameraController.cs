@@ -13,6 +13,14 @@ public class CameraController : MonoBehaviour
     private Light flashlight;
     private bool isFlashlightOn = false;
 
+    [Header("Flashlight Sound")]
+    public AudioSource flashlightAudioSource;
+    public AudioClip flashlightClickSound;
+    [Range(0.0f, 1.0f)]
+    public float flashlightVolume = 0.8f;
+    [Range(0.5f, 2.0f)]
+    public float flashlightPitch = 1.0f;
+
     private float xRotation = 0f;
     private float currentTilt = 0f; 
     private float targetTilt = 0f; 
@@ -20,6 +28,10 @@ public class CameraController : MonoBehaviour
     private float defaultFOV;
     private float targetFOV;
     private bool isZooming = false;
+
+    // Reference to PlayerController for slide tilt
+    private PlayerController playerController;
+    private float externalTilt = 0f;
 
     void Start()
     {
@@ -36,6 +48,15 @@ public class CameraController : MonoBehaviour
         if (flashlight != null)
         {
             flashlight.enabled = isFlashlightOn;
+        }
+
+        // Get reference to PlayerController
+        playerController = GetComponentInParent<PlayerController>();
+
+        // Auto-find AudioSource if not assigned
+        if (flashlightAudioSource == null)
+        {
+            flashlightAudioSource = GetComponent<AudioSource>();
         }
     }
 
@@ -54,6 +75,9 @@ public class CameraController : MonoBehaviour
         {
             isFlashlightOn = !isFlashlightOn;
             flashlight.enabled = isFlashlightOn;
+            
+            // Play flashlight sound
+            PlayFlashlightSound();
         }
     }
 
@@ -91,7 +115,14 @@ public class CameraController : MonoBehaviour
 
         transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
 
-        targetTilt = -mouseX * tiltAmount;
+        // Get external tilt from PlayerController (slide tilt)
+        if (playerController != null)
+        {
+            externalTilt = playerController.GetSlideTilt();
+        }
+
+        // Combine mouse-based tilt with external slide tilt
+        targetTilt = (-mouseX * tiltAmount) + externalTilt;
         
         currentTilt = Mathf.Lerp(currentTilt, targetTilt, tiltSmoothness * Time.deltaTime);
         
@@ -105,5 +136,22 @@ public class CameraController : MonoBehaviour
         {
             transform.Rotate(Vector3.up * mouseX);
         }
+    }
+
+    void PlayFlashlightSound()
+    {
+        if (flashlightAudioSource == null || flashlightClickSound == null) return;
+
+        flashlightAudioSource.clip = flashlightClickSound;
+        flashlightAudioSource.volume = flashlightVolume;
+        flashlightAudioSource.pitch = flashlightPitch;
+        flashlightAudioSource.loop = false;
+        flashlightAudioSource.Play();
+    }
+
+    // Public method to set external tilt (for PlayerController)
+    public void SetExternalTilt(float tilt)
+    {
+        externalTilt = tilt;
     }
 }
