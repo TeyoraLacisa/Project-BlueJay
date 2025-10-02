@@ -24663,7 +24663,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -622.3, y: 318}
+  m_AnchoredPosition: {x: -543, y: 315.3}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1038768612
@@ -30272,7 +30272,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -620, y: -319}
+  m_AnchoredPosition: {x: -542.8, y: -319.3}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1305696300
@@ -38635,7 +38635,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3715200472523082623, guid: f4a7792d96cb1e8bb8c450467810083b, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -48.2424
+      value: -49.2424
       objectReference: {fileID: 0}
     - target: {fileID: 3715200472523082623, guid: f4a7792d96cb1e8bb8c450467810083b, type: 3}
       propertyPath: m_LocalPosition.y
@@ -40133,25 +40133,52 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   speed: 3
-  sprintSpeed: 6
+  sprintSpeed: 5
   crouchSpeed: 2
-  jumpSpeed: 3
-  gravity: 10
+  jumpSpeed: 4
+  gravity: 7.5
   speedTransitionSharpness: 10
-  airControlMultiplier: 5
-  jumpCooldown: 0.7
+  airControlMultiplier: 2.5
+  jumpCooldown: 0.75
   crouchCooldown: 0.1
   groundAcceleration: 12
   groundDeceleration: 16
-  airAcceleration: 8
+  airAcceleration: 4
   crouchHeight: 0.5
   crouchTransitionSpeed: 8
-  slideSpeed: 6
-  slideDuration: 0.6
-  slideCooldown: 0.1
+  slideSpeed: 8
+  slideDuration: 0.5
+  slideCooldown: 1
   slideHeight: 0.5
-  slideDecayRate: 0.8
-  minSlideSpeed: 3
+  slideDecayRate: 1
+  minSlideSpeed: 2
+  dashSpeed: 10
+  dashDuration: 0.5
+  dashCooldown: 1.25
+  dashSpeedCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1.0001494
+      value: 0.40009093
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   standingCameraHeight: 1.6
   crouchingCameraHeight: 0.8
   slidingCameraHeight: 0.25
@@ -40162,6 +40189,7 @@ MonoBehaviour:
   slideSound: {fileID: 8300000, guid: 5e20b74e8227e089688d8ab551c87b4c, type: 3}
   jumpSound: {fileID: 8300000, guid: ece45cf4cf1746bac93b83007709e365, type: 3}
   landingSound: {fileID: 8300000, guid: 04718e3305b6b8bbea988ee7c2317fcd, type: 3}
+  dashSound: {fileID: 8300000, guid: b4cbf4fecb45f9a249820e5cc95ce19e, type: 3}
   walkStepInterval: 0.4
   runStepInterval: 0.3
   crouchStepInterval: 0.5
@@ -40174,6 +40202,8 @@ MonoBehaviour:
   crouchPitch: 0.8
   jumpVolume: 0.8
   jumpPitch: 1
+  dashVolume: 0.8
+  dashPitch: 1.2
   landingThreshold: 4.25
   landingBaseVolume: 0.5
   landingSpeedVolume: 0.5
@@ -40254,7 +40284,7 @@ CharacterController:
   m_Height: 2
   m_Radius: 0.5
   m_SlopeLimit: 45
-  m_StepOffset: 0.5
+  m_StepOffset: 0.25
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 0, z: 0}

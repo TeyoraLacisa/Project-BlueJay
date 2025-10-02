@@ -30,6 +30,12 @@ public class PlayerController : MonoBehaviour
     [Range(0f, 10f)]
     public float minSlideSpeed = 3f;
     
+    [Header("Dash Settings")]
+    public float dashSpeed = 20f;
+    public float dashDuration = 0.2f;
+    public float dashCooldown = 1.5f;
+    public AnimationCurve dashSpeedCurve = AnimationCurve.EaseInOut(0f, 1f, 1f, 0f);
+    
     public float standingCameraHeight = 1.6f;
     public float crouchingCameraHeight = 0.8f;
     public float slidingCameraHeight = 0.5f;
@@ -44,6 +50,7 @@ public class PlayerController : MonoBehaviour
     public AudioClip slideSound;
     public AudioClip jumpSound;
     public AudioClip landingSound;
+    public AudioClip dashSound;
     
     [Header("Footstep Timing")]
     [Tooltip("Time between footsteps when walking")]
@@ -95,6 +102,15 @@ public class PlayerController : MonoBehaviour
     [Tooltip("Pitch for jump sound")]
     [Range(0.5f, 2.0f)]
     public float jumpPitch = 1.0f;
+    
+    [Header("Dash Sound Settings")]
+    [Tooltip("Volume for dash sound")]
+    [Range(0.0f, 1.0f)]
+    public float dashVolume = 0.8f;
+    
+    [Tooltip("Pitch for dash sound")]
+    [Range(0.5f, 2.0f)]
+    public float dashPitch = 1.2f;
     
     [Header("Landing Sound Settings")]
     [Tooltip("Minimum falling speed to trigger landing sound")]
@@ -151,6 +167,12 @@ public class PlayerController : MonoBehaviour
     private Vector3 slideDirection;
     private float currentSlideSpeed;
 
+    // Dash variables
+    private bool isDashing = false;
+    private float dashTimer = 0f;
+    private float dashCooldownTimer = 0f;
+    private Vector3 dashDirection;
+
     // Reference to CameraController for tilt coordination
     private CameraController cameraController;
     private float currentSlideTilt = 0f;
@@ -189,6 +211,11 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
+        if (dashCooldownTimer > 0f)
+        {
+            dashCooldownTimer -= Time.deltaTime;
+        }
+        
         if (jumpCooldownTimer > 0f)
         {
             jumpCooldownTimer -= Time.deltaTime;
@@ -199,6 +226,8 @@ public class PlayerController : MonoBehaviour
             crouchCooldownTimer -= Time.deltaTime;
         }
 
+        HandleDashInput();
+        HandleDash();
         HandleCrouchInput();
         HandleSliding();
         HandleCrouch();
@@ -210,6 +239,72 @@ public class PlayerController : MonoBehaviour
         {
             AutoStandUp();
         }
+    }
+
+    void HandleDashInput()
+    {
+        if (Input.GetKeyDown(KeyCode.Q) && dashCooldownTimer <= 0f && !isDashing && !isSliding)
+        {
+            StartDash();
+        }
+    }
+
+    void HandleDash()
+    {
+        if (isDashing)
+        {
+            dashTimer -= Time.deltaTime;
+
+            // Calculate dash speed using the animation curve
+            float normalizedTime = 1f - (dashTimer / dashDuration);
+            float speedMultiplier = dashSpeedCurve.Evaluate(normalizedTime);
+            float currentDashSpeed = dashSpeed * speedMultiplier;
+            
+            // Apply dash movement
+            currentVelocity = dashDirection * currentDashSpeed;
+            moveDirection.x = currentVelocity.x;
+            moveDirection.z = currentVelocity.z;
+
+            if (dashTimer <= 0f)
+            {
+                EndDash();
+            }
+        }
+    }
+
+    void StartDash()
+    {
+        isDashing = true;
+        dashTimer = dashDuration;
+        dashCooldownTimer = dashCooldown;
+        
+        // Determine dash direction based on movement input
+        Vector2 input = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));
+        
+        if (input.magnitude > 0.1f)
+        {
+            // Dash in the direction of input
+            dashDirection = new Vector3(input.x, 0, input.y).normalized;
+            dashDirection = transform.TransformDirection(dashDirection);
+        }
+        else
+        {
+            // If no input, dash forward
+            dashDirection = transform.forward;
+        }
+        
+        // Play dash sound
+        PlayDashSound();
+    }
+
+    void EndDash()
+    {
+        isDashing = false;
+        // Smoothly transition back to normal movement
+        currentVelocity = dashDirection * currentSpeed;
+        
+        // FIXED: Stop dash sound when dash ends
+        StopDashSound();
     }
 
     void HandleCrouchInput()
@@ -524,7 +619,7 @@ public class PlayerController : MonoBehaviour
 
     void HandleMovement()
     {
-        if (isSliding)
+        if (isDashing || isSliding)
         {
             moveDirection.y -= gravity * Time.deltaTime;
             controller.Move(moveDirection * Time.deltaTime);
@@ -541,10 +636,11 @@ public class PlayerController : MonoBehaviour
         Vector3 desiredMoveDirection = new Vector3(input.x, 0, input.y);
         desiredMoveDirection = transform.TransformDirection(desiredMoveDirection);
         
+        // FIXED: Remove grounded requirement for sprinting to maintain sprint in air
         isSprinting = (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && 
                      !isCrouching && 
                      !isSliding && 
-                     controller.isGrounded &&
+                     !isDashing &&
                      input.magnitude > 0.1f;
         
         float targetMovementSpeed;
@@ -579,12 +675,20 @@ public class PlayerController : MonoBehaviour
             moveDirection.x = currentVelocity.x;
             moveDirection.z = currentVelocity.z;
 
-            if (Input.GetButton("Jump") && jumpCooldownTimer <= 0f && !isCrouching)
+            if (Input.GetButton("Jump") && jumpCooldownTimer <= 0f && !isCrouching && !isDashing)
             {
                 // Play jump sound
                 PlayJumpSound();
                 moveDirection.y = jumpSpeed;
                 jumpCooldownTimer = jumpCooldown;
+                
+                // FIXED: Preserve horizontal momentum when jumping
+                Vector3 horizontalVelocity = new Vector3(currentVelocity.x, 0, currentVelocity.z);
+                if (horizontalVelocity.magnitude > currentSpeed)
+                {
+                    horizontalVelocity = horizontalVelocity.normalized * currentSpeed;
+                }
+                currentVelocity = horizontalVelocity;
             }
             else
             {
@@ -593,11 +697,19 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
+            // FIXED: Improved air movement to maintain speed better
             Vector3 targetAirVelocity = desiredMoveDirection * currentSpeed;
             
             if (input.magnitude > 0.1f)
             {
-                currentVelocity = Vector3.Lerp(currentVelocity, targetAirVelocity, airAcceleration * Time.deltaTime);
+                // Use higher acceleration when sprinting in air
+                float effectiveAirAcceleration = isSprinting ? airAcceleration * 1.5f : airAcceleration;
+                currentVelocity = Vector3.Lerp(currentVelocity, targetAirVelocity, effectiveAirAcceleration * Time.deltaTime);
+            }
+            else
+            {
+                // Reduce deceleration in air to maintain momentum
+                currentVelocity = Vector3.Lerp(currentVelocity, new Vector3(currentVelocity.x, 0, currentVelocity.z), airAcceleration * 0.3f * Time.deltaTime);
             }
             
             moveDirection.x = currentVelocity.x;
@@ -619,8 +731,8 @@ public class PlayerController : MonoBehaviour
         bool hasMovementInput = input.magnitude > 0.1f;
         bool isMoving = currentVelocity.magnitude > 0.1f;
         
-        // Only play footsteps if moving with input AND grounded
-        bool shouldPlayFootsteps = isGrounded && hasMovementInput && isMoving && !isSliding;
+        // Only play footsteps if moving with input AND grounded AND not dashing
+        bool shouldPlayFootsteps = isGrounded && hasMovementInput && isMoving && !isSliding && !isDashing;
 
         // Play landing sound - FIXED for high speed landings
         if (isGrounded && !wasGrounded)
@@ -735,6 +847,29 @@ public class PlayerController : MonoBehaviour
         footstepAudioSource.Play();
     }
 
+    void PlayDashSound()
+    {
+        if (footstepAudioSource == null || dashSound == null) return;
+
+        footstepAudioSource.clip = dashSound;
+        footstepAudioSource.pitch = dashPitch;
+        footstepAudioSource.volume = dashVolume;
+        footstepAudioSource.loop = false;
+        footstepAudioSource.Play();
+    }
+
+    // FIXED: Added method to stop dash sound
+    void StopDashSound()
+    {
+        if (footstepAudioSource == null) return;
+        
+        // Only stop if currently playing the dash sound
+        if (footstepAudioSource.isPlaying && footstepAudioSource.clip == dashSound)
+        {
+            footstepAudioSource.Stop();
+        }
+    }
+
     void PlayLandingSound(float landingVelocity)
     {
         if (footstepAudioSource == null || landingSound == null) return;
@@ -764,6 +899,12 @@ public class PlayerController : MonoBehaviour
         return isSliding;
     }
 
+    // Public method to check if dashing
+    public bool IsDashing()
+    {
+        return isDashing;
+    }
+
     public bool IsGrounded()
     {
         return controller.isGrounded;
@@ -787,5 +928,11 @@ public class PlayerController : MonoBehaviour
     public float GetSprintSpeed()
     {
         return sprintSpeed;
+    }
+
+    // Public method to get dash cooldown progress (0-1)
+    public float GetDashCooldownProgress()
+    {
+        return Mathf.Clamp01(1f - (dashCooldownTimer / dashCooldown));
     }
 }
